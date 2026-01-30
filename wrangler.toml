@@ -2,5 +2,10 @@ name = "telegram-echo-bot"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
+# KV namespace для хранения сессий
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "07616f11a13a4d138f009adda25795da"
+
 # Добавьте ваш Telegram Bot Token в переменные окружения через Cloudflare Dashboard
 # или используйте команду: wrangler secret put BOT_TOKEN
