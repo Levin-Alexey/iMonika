@@ -7,5 +7,11 @@ compatibility_date = "2024-01-01"
 binding = "SESSIONS"
 id = "07616f11a13a4d138f009adda25795da"
 
+# D1 база для логов
+[[d1_databases]]
+binding = "imonika_logs"
+database_name = "imonika-logs"
+database_id = "abcde869-ffa3-4b44-9d53-c43c0e1220a3"
+
 # Добавьте ваш Telegram Bot Token в переменные окружения через Cloudflare Dashboard
 # или используйте команду: wrangler secret put BOT_TOKEN

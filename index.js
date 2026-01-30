@@ -4,6 +4,7 @@ export default {
     const BOT_TOKEN = env.BOT_TOKEN;
     const DIFY_API_KEY = env.DIFY_API_KEY;
     const SESSIONS = env.SESSIONS; // KV namespace для сессий
+    const LOG_DB = env.imonika_logs; // D1 база логов
     
     if (request.method === "POST") {
       try {
@@ -41,7 +42,10 @@ export default {
           }
           
           // Отправляем сообщение в Dify
-          const difyResponse = await queryDify(text, userId, DIFY_API_KEY);
+          const difyResult = await queryDify(text, userId, DIFY_API_KEY);
+          const difyAnswer = difyResult.answer;
+          const NO_ANSWER_MARKER = "__NO_ANSWER__";
+          const recognized = Boolean(difyAnswer && !difyAnswer.includes(NO_ANSWER_MARKER));
           
           // Обновляем сессию
           session.messageCount++;
@@ -52,8 +56,29 @@ export default {
             expirationTtl: 86400 // 24 часа
           });
           
+          // Логируем вопрос/ответ в D1 (если подключено)
+          if (LOG_DB) {
+            try {
+              await LOG_DB.prepare(
+                "INSERT INTO chat_logs (user_id, chat_id, question, answer, recognized, conversation_id) VALUES (?, ?, ?, ?, ?, ?)"
+              )
+                .bind(
+                  String(userId),
+                  String(chatId),
+                  text,
+                  difyAnswer || null,
+                  recognized ? 1 : 0,
+                  difyResult.conversationId || null
+                )
+                .run();
+            } catch (dbError) {
+              console.error("D1 log error:", dbError);
+            }
+          }
+          
           // Отправляем ответ от Dify пользователю
-          await sendMessage(chatId, difyResponse, BOT_TOKEN);
+          const finalAnswer = recognized ? difyAnswer : "Не удалось получить ответ от базы знаний";
+          await sendMessage(chatId, finalAnswer, BOT_TOKEN);
         }
         
         return new Response("OK", { status: 200 });
@@ -113,5 +138,9 @@ async function queryDify(question, userId, apiKey) {
   }
   
   const data = await response.json();
-  return data.answer || "Не удалось получить ответ от базы знаний";
+  return {
+    answer: data.answer || "",
+    conversationId: data.conversation_id || "",
+    raw: data
+  };
 }
